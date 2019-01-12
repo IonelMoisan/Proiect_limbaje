@@ -222,6 +222,10 @@ assign	: TOK_VARIABLE TOK_ASSIGN exp
 								syyerror(msg);
 								YYERROR;
 							}
+							else
+							{
+								ts->setValue($1,1);
+							}
 						}
 					else
 					{
@@ -261,6 +265,12 @@ DIV_factor: TOK_VARIABLE
 											syyerror(msg);
 											YYERROR;
 										}
+									if(ts->getValue($1)!=1)
+									{
+										sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu e initializata", @1.first_line, @1.first_column, $1);
+										syyerror(msg);
+										YYERROR;
+									}
 								}
 							}
 							else
@@ -292,6 +302,15 @@ factor 	: TOK_VARIABLE
 								sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu e declarata!", @1.first_line, @1.first_column, $1);
 								syyerror(msg);
 								YYERROR;
+							}
+							else
+							{
+								if(ts->getValue($1)!=1)
+								{
+									sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu e initializata", @1.first_line, @1.first_column, $1);
+									syyerror(msg);
+									YYERROR;
+								}
 							}
 						}
 					else
