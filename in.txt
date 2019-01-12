@@ -1,0 +1,10 @@
+PROGRAM Exemplu_1 VAR
+a1,a2,a3,a4:INTEGER;
+b1,b2,b3:INTEGER
+BEGIN
+b1:=2;
+a1:=2;
+b3:=2;
+b3:=2 DIV 0
+END
+
