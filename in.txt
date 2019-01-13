@@ -4,7 +4,8 @@ b1,b2,b3:INTEGER
 BEGIN
 b1:=2;
 a1:=2;
-b3:=2;
-b3:=2 DIV 0
+b3:=2 DIV 2;
+READ(b3,a3);
+WRITE(a2,a3)
 END
 

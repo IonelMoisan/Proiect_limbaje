@@ -6,7 +6,9 @@
 	int yylex();
 	int yyerror(const char *msg);
 	int syyerror(const char *msg);
-
+	int Is_div=0;
+	int Is_read=0;
+	int Is_write=0;
   int EsteCorecta = 1;
 	char msg[500];
 
@@ -111,8 +113,6 @@
 %token <sir> TOK_VARIABLE
 
 
-
-
 %start prog
 
 %left TOK_PLUS TOK_MINUS
@@ -127,7 +127,7 @@ prog :	TOK_PROG prog_name TOK_VAR  dec_list TOK_BEGIN stmt_list TOK_END
 				error TOK_VAR  dec_list TOK_BEGIN stmt_list TOK_END
        			{ EsteCorecta = 0;	}
 				|
-				error  dec_list TOK_BEGIN stmt_list TOK_END
+			  error dec_list TOK_BEGIN stmt_list TOK_END
        			{ EsteCorecta = 0;		}
 				|
 				error TOK_BEGIN stmt_list TOK_END
@@ -158,46 +158,125 @@ type		: TOK_INTEGER
 					;
 id_list : TOK_VARIABLE
 						{
+							if(Is_read!=1 && Is_write!=1)
+							{
+								if(ts != NULL)
+								{
+									if(ts->exists($1) == 1)
+									{
+										sprintf(msg,"%d:%d Eroare semantica: Variabila %s este declarata deja", @1.first_line, @1.first_column, $1);
+										syyerror(msg);
+										YYERROR;
+									}
+									else
+									{
+										ts->add($1);
+									}
+								}
+								else
+									{
+									  ts = new TVAR();
+										ts->add($1);
+									}
+							}
+							else
+							{
+								if(ts != NULL)
+								{
+									if(ts->exists($1) != 1)
+									{
+										sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu este declarata ", @1.first_line, @1.first_column, $1);
+										syyerror(msg);
+										YYERROR;
+									}
+									else
+									{
+										if(Is_write==1&&Is_read==0)
+										{
+											if(ts->getValue($1)!=1)
+											{
+												sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu este initializata ", @1.first_line, @1.first_column, $1);
+												syyerror(msg);
+												YYERROR;
+											}
+										}
+										else
+												if(Is_write==0&&Is_read==1)
+												{
+													ts->setValue($1,1);
+												}
+									}
+								}
+								else
+									{
+										sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu este declarata ", @1.first_line, @1.first_column, $1);
+										syyerror(msg);
+										YYERROR;
+									}
+							}
+						}
+
+					|
+					id_list ',' TOK_VARIABLE
+					{
+						if(Is_read!=1 && Is_write!=1)
+						{
 							if(ts != NULL)
 							{
-								if(ts->exists($1) == 1)
+								if(ts->exists($3) == 1)
 								{
-									sprintf(msg,"%d:%d Eroare semantica: Variabila %s este declarata deja", @1.first_line, @1.first_column, $1);
+									sprintf(msg,"%d:%d Eroare semantica: Variabila %s este declarata deja", @1.first_line, @1.first_column, $3);
 									syyerror(msg);
 									YYERROR;
 								}
 								else
 								{
-									ts->add($1);
+									ts->add($3);
 								}
 							}
 							else
 								{
-								  ts = new TVAR();
-									ts->add($1);
+									ts = new TVAR();
+									ts->add($3);
 								}
-						}
-					|
-					id_list ',' TOK_VARIABLE
-					{
-						if(ts != NULL)
-						{
-							if(ts->exists($3) == 1)
-							{
-								sprintf(msg,"%d:%d Eroare semantica: Variabila %s este declarata deja", @1.first_line, @1.first_column, $3);
-								syyerror(msg);
-								YYERROR;
 							}
 							else
 							{
-								ts->add($3);
+								if(ts != NULL)
+								{
+									if(ts->exists($3) != 1)
+									{
+										sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu este declarata ", @1.first_line, @1.first_column, $3);
+										syyerror(msg);
+										YYERROR;
+									}
+									else
+									{
+										if(Is_write==1&&Is_read==0)
+										{
+											if(ts->getValue($3)!=1)
+											{
+												sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu este initializata ", @1.first_line, @1.first_column, $3);
+												syyerror(msg);
+												YYERROR;
+											}
+										}
+										else
+												if(Is_write==0&&Is_read==1)
+												{
+													ts->setValue($3,1);
+												}
+
+									}
+								}
+								else
+									{
+										sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu este declarata ", @1.first_line, @1.first_column, $3);
+										syyerror(msg);
+										YYERROR;
+									}
 							}
-						}
-						else
-							{
-								ts = new TVAR();
-								ts->add($3);
-							}
+
 					}
 					;
 stmt_list: stmt
@@ -245,53 +324,8 @@ term    : factor
 				  |
 					term TOK_MULTIPLY factor
 					|
-					term TOK_DIVIDE DIV_factor
-					;
-DIV_factor: TOK_VARIABLE
-						{
-							if(ts != NULL)
-							{
-								if(ts->exists($1) != 1)
-								{
-									sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu e declarata!", @1.first_line, @1.first_column, $1);
-									syyerror(msg);
-									YYERROR;
-								}
-								else
-								{
-									if(ts->getValue($1) == -1) // teoretic... verifica daca variabila e 0, dar nu ii dau valoare nicaieri
-										{
-											sprintf(msg,"%d:%d Eroare semantica: Nu se poate imparti la 0!", @1.first_line, @1.first_column, $1);
-											syyerror(msg);
-											YYERROR;
-										}
-									if(ts->getValue($1)!=1)
-									{
-										sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu e initializata", @1.first_line, @1.first_column, $1);
-										syyerror(msg);
-										YYERROR;
-									}
-								}
-							}
-							else
-							{
-								sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu e declarata!", @1.first_line, @1.first_column, $1);
-								syyerror(msg);
-								YYERROR;
-							}
-						}
-					|
-					TOK_NUMBER
-					{
-						if ($1 == 0)
-						{
-							sprintf(msg,"%d:%d Eroare semantica: Nu se poate imparti la 0!", @1.first_line, @1.first_column, $1);
-							syyerror(msg);
-							YYERROR;
-						}
-					}
-					|
-					TOK_LEFT exp TOK_RIGHT
+					term {Is_div=1;} TOK_DIVIDE factor
+					{ Is_div=0; }
 					;
 factor 	: TOK_VARIABLE
 					{
@@ -311,6 +345,18 @@ factor 	: TOK_VARIABLE
 									syyerror(msg);
 									YYERROR;
 								}
+								else
+								{
+									if(Is_div==1)
+									{
+										if(ts->getValue($1)==0)
+										{
+											sprintf(msg,"%d:%d Eroare semantica: NU se poate imparti la 0", @1.first_line, @1.first_column);
+											syyerror(msg);
+											YYERROR;
+										}
+									}
+								}
 							}
 						}
 					else
@@ -322,71 +368,50 @@ factor 	: TOK_VARIABLE
 					}
  					|
 					TOK_NUMBER
-					|
-					TOK_LEFT exp TOK_RIGHT
-					;
-read 		: TOK_READ TOK_LEFT id_list_WR TOK_RIGHT
-					;
-write   : TOK_WRITE TOK_LEFT id_list_WR TOK_RIGHT
-					;
-					id_list_WR : TOK_VARIABLE
-											{
-												if(ts != NULL)
-												{
-													if(ts->exists($1) != 1)
-													{
-														sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu este declarata ", @1.first_line, @1.first_column, $1);
-														syyerror(msg);
-														YYERROR;
-													}
-												}
-												else
-													{
-														sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu este declarata ", @1.first_line, @1.first_column, $1);
-														syyerror(msg);
-														YYERROR;
-													}
-											}
-										|
-										id_list_WR ',' TOK_VARIABLE
-										{
-											if(ts != NULL)
-											{
-												if(ts->exists($3) != 1)
-												{
-													sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu este declarata ", @1.first_line, @1.first_column, $3);
-													syyerror(msg);
-													YYERROR;
-												}
-											}
-											else
-												{
-													sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu este declarata ", @1.first_line, @1.first_column, $3);
-													syyerror(msg);
-													YYERROR;
-												}
-										}
-										;
-for			: TOK_FOR index_exp TOK_DO body
-					;
-index_exp   :  TOK_VARIABLE TOK_ASSIGN exp TOK_TO exp
+					{
+						if(Is_div==1)
+						{
+							if($1==0)
 							{
-							if(ts != NULL)
-							{
-									if(ts->exists($1) != 1)
-									{
-										sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu e declarata!", @1.first_line, @1.first_column, $1);
-										syyerror(msg);
-										YYERROR;
-									}
-								}
-							else
-							{
-								sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu e declarata!", @1.first_line, @1.first_column, $1);
+								sprintf(msg,"%d:%d Eroare semantica: NU se poate imparti la 0", @1.first_line, @1.first_column);
 								syyerror(msg);
 								YYERROR;
 							}
+						}
+					}
+					|
+					TOK_LEFT exp TOK_RIGHT
+					;
+read 		: TOK_READ {Is_read=1;} TOK_LEFT id_list TOK_RIGHT
+					{ Is_read=0; }
+					;
+write   : TOK_WRITE {Is_write=1;} TOK_LEFT id_list TOK_RIGHT
+					{Is_write=0;}
+					;
+for			: TOK_FOR index_exp TOK_DO body
+					;
+index_exp   :  TOK_VARIABLE TOK_ASSIGN exp TOK_TO exp
+						{
+						if(ts != NULL)
+						{
+								if(ts->exists($1) != 1)
+								{
+									sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu e declarata!", @1.first_line, @1.first_column, $1);
+									syyerror(msg);
+									YYERROR;
+								}
+								else
+								{
+									ts->setValue($1,1);
+								}
 							}
+						else
+						{
+							sprintf(msg,"%d:%d Eroare semantica: Variabila %s nu e declarata!", @1.first_line, @1.first_column, $1);
+							syyerror(msg);
+							YYERROR;
+						}
+						}
 						;
 body			:	stmt
 						|
